@@ -1,5 +1,7 @@
 Folder Constructor is an easily editable folder-structure creator and visualizer. Folders can be added by manually typing. You can also paste a column from raw text, CSV, Excel or Google Spreadsheet. There is no folder limit. Simply double-click the .html file to open in your browser.
 
+View here: http://htmlpreview.github.io/?https://github.com/casey-drogin/Folder-Constructor/blob/master/index.html
+
 <img width="694" height="351" alt="image" src="https://github.com/user-attachments/assets/0acd695a-9951-461b-bb52-86fb3d23dc54" />
 
 Adding Tiers
