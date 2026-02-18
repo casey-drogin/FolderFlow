@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FolderFlow</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<title>Folderflow Builder</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e4e4e7;min-height:100vh;display:flex}
@@ -113,26 +112,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <body>
 <div class="sidebar">
   <div class="sidebar-header">
-    <h1>📁 FolderFlow <button id="helpBtn" onclick="toggleHelp(event)" style="background:#18181b;border:1px solid #27272a;border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;color:#52525b;font-weight:700;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;padding:0;line-height:1" onmouseover="this.style.color='#a1a1aa';this.style.borderColor='#3f3f46'" onmouseout="this.style.color='#52525b';this.style.borderColor='#27272a'">?</button></h1>
+    <h1>📁 Folderflow Builder <button id="helpBtn" onclick="toggleHelp(event)" style="background:#18181b;border:1px solid #27272a;border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;color:#52525b;font-weight:700;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;padding:0;line-height:1" onmouseover="this.style.color='#a1a1aa';this.style.borderColor='#3f3f46'" onmouseout="this.style.color='#52525b';this.style.borderColor='#27272a'">?</button></h1>
     <div id="helpPopup" style="display:none;position:fixed;top:50px;left:20px;z-index:9999;background:#18181b;border:1px solid #3f3f46;border-radius:10px;padding:14px 16px;font-size:11px;line-height:1.6;color:#a1a1aa;width:340px;max-height:400px;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,0.6)">
       <div style="font-weight:700;color:#e4e4e7;margin-bottom:6px;font-size:12px">Quick Guide</div>
       <div style="color:#71717a;margin-bottom:8px">Type folder names or paste a column from Excel / Google Sheets / CSV. Comma-separated entries work too.</div>
-      <div style="font-weight:600;color:#d4d4d8;margin-top:8px">Tiers</div>
-      <div style="color:#71717a">Click <span style="color:#a1a1aa">+ Add Tier</span> to nest folders inside parent folders. By default, items are <span style="color:#a1a1aa">Global</span> (replicated in every parent). Switch to <span style="color:#a1a1aa">Child of Parent</span> for unique subfolders per parent.</div>
+      <div style="font-weight:600;color:#d4d4d8;margin-top:8px">Subfolders</div>
+      <div style="color:#71717a">Click <span style="color:#a1a1aa">+ Add Subfolders</span> to nest folders inside parent folders. By default, items are <span style="color:#a1a1aa">Global</span> (replicated in every parent). Switch to <span style="color:#a1a1aa">Child of Parent</span> for unique subfolders per parent.</div>
       <div style="font-weight:600;color:#d4d4d8;margin-top:8px">Reorder &amp; Edit</div>
-      <div style="color:#71717a">Use <span style="color:#a1a1aa">↑ ↓</span> arrows to reorder tiers. Double-click any tag to rename it inline. Press Enter to confirm, Escape to cancel.</div>
+      <div style="color:#71717a">Use <span style="color:#a1a1aa">↑ ↓</span> arrows to reorder levels. Double-click any tag to rename it inline. Press Enter to confirm, Escape to cancel.</div>
       <div style="font-weight:600;color:#d4d4d8;margin-top:8px">Preview</div>
       <div style="color:#71717a">Switch between <span style="color:#a1a1aa">Tree</span>, <span style="color:#a1a1aa">Columns</span>, and <span style="color:#a1a1aa">Flowchart</span> views. Click nodes to expand/collapse.</div>
       <div style="font-weight:600;color:#d4d4d8;margin-top:8px">Export</div>
-      <div style="color:#71717a">Download as a <span style="color:#a1a1aa">.zip</span> containing the empty folder structure.</div>
+      <div style="color:#71717a">Click <span style="color:#a1a1aa">Download Folders</span> to select a destination on your computer. The tool will create the folders instantly.</div>
       <div style="height:1px;background:#27272a;margin:10px 0"></div>
       <div style="color:#3f3f46;font-size:10px;font-style:italic">Refreshing the page resets everything. No save functionality yet.</div>
     </div></h1>
-    <p>Build your hierarchy, preview live, export as ZIP.</p>
+    <p>Build your hierarchy, preview live, and create folders instantly.</p>
   </div>
   <div class="sidebar-body" id="sidebarBody"></div>
   <div class="output-section">
-    <button id="exportBtn" style="width:100%;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;background:#059669;color:white;display:flex;align-items:center;justify-content:center;gap:8px" onmouseover="if(!this.disabled)this.style.background='#10b981'" onmouseout="if(!this.disabled)this.style.background='#059669'" onclick="exportZip()" disabled>📦 Download ZIP</button>
+    <button id="directWriteBtn" style="width:100%;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;background:#2563eb;color:white;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;" onclick="writeToDisk()" disabled>📂 Download Folders</button>
   </div>
 </div>
 <div class="main">
@@ -167,7 +166,7 @@ const COLORS=[
 ];
 const MAX_TIERS=6;
 
-let tiers=[{id:"tier0",label:"Tier 1",items:[],mode:"global",perParent:{},open:true}];
+let tiers=[{id:"tier0",label:"Root Directory",items:[],mode:"global",perParent:{},open:true}];
 let expanded={};
 let tierIdCounter=2;
 let currentView="tree";
@@ -291,31 +290,18 @@ function toggleTierOpen(tierIdx){tiers[tierIdx].open=!tiers[tierIdx].open;render
 function addPerParentItem(tierIdx,parentName){const t=tiers[tierIdx];const inp=document.getElementById("pp-"+t.id+"-"+cssId(parentName));if(!inp)return;if(!t.perParent[parentName])t.perParent[parentName]=[];pi(inp.value).forEach(v=>{if(!t.perParent[parentName].includes(v))t.perParent[parentName].push(v)});inp.value="";renderAll()}
 function removePerParentItem(tierIdx,parentName,itemIdx){tiers[tierIdx].perParent[parentName].splice(itemIdx,1);renderAll()}
 function togGroup(key){expanded[key]=!expanded[key];renderAll()}
-function addTier(){if(tiers.length>=MAX_TIERS)return;tiers.push({id:"tier"+tierIdCounter++,label:"Tier "+(tiers.length+1),items:[],mode:"global",perParent:{},open:true});renderAll()}
-function removeTier(tierIdx){if(tiers.length<=1)return;tiers.splice(tierIdx,1);tiers.forEach((t,i)=>{t.label="Tier "+(i+1)});renderAll()}
-function clearAll(){tiers.forEach(t=>{t.items=[];t.mode="global";t.perParent={}});expanded={};treeCollapsed={};columnSelection=[];renderAll()}
+function addTier(){if(tiers.length>=MAX_TIERS)return;tiers.push({id:"tier"+tierIdCounter++,label:"Subfolders (Level "+(tiers.length+1)+")",items:[],mode:"global",perParent:{},open:true});renderAll()}
+function removeTier(tierIdx){if(tiers.length<=1)return;tiers.splice(tierIdx,1);tiers.forEach((t,i)=>{if(i===0)t.label="Root Directory";else t.label="Subfolders (Level "+(i+1)+")"});renderAll()}
 
-// --- MOVE TIER UP/DOWN ---
-function moveTierUp(tierIdx){
-  if(tierIdx<=0)return;
-  moveTier(tierIdx, tierIdx-1);
-}
-function moveTierDown(tierIdx){
-  if(tierIdx>=tiers.length-1)return;
-  moveTier(tierIdx, tierIdx+1);
-}
+function moveTierUp(tierIdx){if(tierIdx<=0)return;moveTier(tierIdx, tierIdx-1);}
+function moveTierDown(tierIdx){if(tierIdx>=tiers.length-1)return;moveTier(tierIdx, tierIdx+1);}
 
 function moveTier(fromIdx, toIdx){
-  // Swap the two tiers in the array
   const tierA = tiers[fromIdx];
   const tierB = tiers[toIdx];
   tiers[fromIdx] = tierB;
   tiers[toIdx] = tierA;
-
-  // After swap, reset perParent mode for tiers that changed position
-  // The tier that moved to index 0 can't be "per parent" — force it to global
   if(toIdx === 0 && tierA.mode === 'per'){
-    // tierA moved to position 0 — flatten perParent into global items
     const allItems = new Set(tierA.items);
     Object.values(tierA.perParent).forEach(arr => arr.forEach(v => allItems.add(v)));
     tierA.items = [...allItems];
@@ -329,33 +315,18 @@ function moveTier(fromIdx, toIdx){
     tierB.mode = 'global';
     tierB.perParent = {};
   }
-
-  // For any tier in "per parent" mode, the perParent keys reference names from
-  // the tier above. After a swap these references may be stale.
-  // Reset perParent for the tier that is now below the swapped pair,
-  // and for the swapped tiers themselves if they were in per-parent mode
-  // referencing the other's items.
-  // 
-  // Strategy: any tier in 'per' mode whose parent tier just changed —
-  // we convert it to global to avoid broken references.
-  // This is the safest approach; the user can re-assign per-parent after.
-  
   const affectedIndices = new Set([fromIdx, toIdx]);
-  // Also check tiers immediately after the swap range
   const maxIdx = Math.max(fromIdx, toIdx);
   if(maxIdx + 1 < tiers.length) affectedIndices.add(maxIdx + 1);
-
   affectedIndices.forEach(idx => {
-    if(idx === 0) return; // tier 0 can't be per-parent
+    if(idx === 0) return;
     const t = tiers[idx];
     if(t.mode === 'per'){
-      // Check if the perParent keys still match the tier above's items
       const parentNames = new Set();
       collectAllNames(idx - 1, parentNames);
       const currentKeys = Object.keys(t.perParent);
       const allValid = currentKeys.every(k => parentNames.has(k));
       if(!allValid){
-        // Flatten to global
         const allItems = new Set(t.items);
         Object.values(t.perParent).forEach(arr => arr.forEach(v => allItems.add(v)));
         t.items = [...allItems];
@@ -364,20 +335,11 @@ function moveTier(fromIdx, toIdx){
       }
     }
   });
-
-  // Relabel
-  tiers.forEach((t,i)=>{t.label="Tier "+(i+1)});
-
-  // Flash the moved tier
+  tiers.forEach((t,i)=>{if(i===0)t.label="Root Directory";else t.label="Subfolders (Level "+(i+1)+")"});
   justMovedTierId = tierA.id;
-  
-  // Clear tree collapse state since hierarchy changed
   treeCollapsed = {};
   columnSelection = [];
-
   renderAll();
-  
-  // Clear flash after animation
   setTimeout(()=>{ justMovedTierId=null; }, 700);
 }
 
@@ -427,7 +389,7 @@ function insertTierAt(idx){
   if(tiers.length>=MAX_TIERS)return;
   const newTier={id:"tier"+tierIdCounter++,label:"",items:[],mode:"global",perParent:{},open:true};
   tiers.splice(idx,0,newTier);
-  tiers.forEach((t,i)=>{t.label="Tier "+(i+1)});
+  tiers.forEach((t,i)=>{if(i===0)t.label="Root Directory";else t.label="Subfolders (Level "+(i+1)+")"});
   renderAll();
 }
 
@@ -435,39 +397,32 @@ function renderSidebar(){
   const sb=document.getElementById("sidebarBody");
   let html="";
   if(tiers.length<MAX_TIERS){
-    html+=`<div class="insert-tier-zone" onclick="insertTierAt(0)"><button class="insert-tier-btn">+ Insert Tier Above</button></div>`;
+    html+=`<div class="insert-tier-zone" onclick="insertTierAt(0)"><button class="insert-tier-btn">+ Insert Root Above</button></div>`;
   }
   tiers.forEach((tier,idx)=>{
     const col=tierColor(idx);const isOpen=tier.open;const hasContent=tierHasContent(idx);const count=tierItemCount(idx);const canRemove=tiers.length>1;
     const isFlash = tier.id === justMovedTierId;
     const flashClass = isFlash ? ' tier-just-moved' : '';
-    
-    // Move buttons
     const canMoveUp = idx > 0;
     const canMoveDown = idx < tiers.length - 1;
-    const moveUpBtn = `<button class="btn-move-tier" onclick="event.stopPropagation();moveTierUp(${idx})" ${canMoveUp?'':'disabled'} title="Move tier up">↑</button>`;
-    const moveDownBtn = `<button class="btn-move-tier" onclick="event.stopPropagation();moveTierDown(${idx})" ${canMoveDown?'':'disabled'} title="Move tier down">↓</button>`;
-    const moveButtons = tiers.length > 1 ? moveUpBtn + moveDownBtn : '';
+    const moveButtons = tiers.length > 1 ? `<button class="btn-move-tier" onclick="event.stopPropagation();moveTierUp(${idx})" ${canMoveUp?'':'disabled'}>↑</button><button class="btn-move-tier" onclick="event.stopPropagation();moveTierDown(${idx})" ${canMoveDown?'':'disabled'}>↓</button>` : '';
 
     if(!isOpen){
-      html+=`<div class="section collapsed-section${flashClass}" onclick="toggleTierOpen(${idx})"><div class="section-header collapsed-header"><span class="section-label" style="color:${col.text}">● ${tier.label}</span><div class="header-right">${moveButtons}${hasContent?`<span class="tag" style="background:${col.tagBg};color:${col.text};border:1px solid ${col.tagBorder}">${count} item${count!==1?"s":""}</span>`:`<span class="collapsed-hint">click to expand</span>`}</div></div></div>`;
+      html+=`<div class="section collapsed-section${flashClass}" onclick="toggleTierOpen(${idx})"><div class="section-header collapsed-header"><span class="section-label" style="color:${col.text}">● ${tier.label}</span><div class="header-right">${moveButtons}${hasContent?`<span class="tag" style="background:${col.tagBg};color:${col.text};border:1px solid ${col.tagBorder}">${count} items</span>`:`<span class="collapsed-hint">click to expand</span>`}</div></div></div>`;
       return;
     }
     html+=`<div class="section${flashClass}"><div class="section-header"><span class="section-label" style="color:${col.text}" onclick="toggleTierOpen(${idx})">● ${tier.label}</span><div class="header-right">${moveButtons}${hasContent?`<button class="btn-clear-tier" onclick="clearTier(${idx})">Clear</button>`:""} ${canRemove?`<button class="btn-remove-tier" onclick="removeTier(${idx})">Remove</button>`:""}</div></div>`;
     if(idx===0){
-      html+=`<p class="section-hint">Top level — networks, clients, projects, etc.</p>`;
       html+=renderTagsHTML(tier.items,col,"removeItem",idx);
-      html+=`<div class="input-row"><input type="text" id="inp-${tier.id}" placeholder="Paste from spreadsheet or type names..." onkeydown="if(event.key==='Enter'){addItem(${idx});return;}"><button class="btn-add" onclick="addItem(${idx})">+ Add</button></div>`;
+      html+=`<div class="input-row"><input type="text" id="inp-${tier.id}" placeholder="Paste or type folders..." onkeydown="if(event.key==='Enter'){addItem(${idx});return;}"><button class="btn-add" onclick="addItem(${idx})">+ Add</button></div>`;
     } else {
       html+=`<div class="toggle-row"><span class="toggle-label" style="${tier.mode==="global"?`color:${col.text};background:${col.toggleBg}`:""}" onclick="setMode(${idx},'global')">Global</span><span class="toggle-label" style="${tier.mode==="per"?`color:${col.text};background:${col.toggleBg}`:""}" onclick="setMode(${idx},'per')">Child of Parent</span></div>`;
       if(tier.mode==="global"){
-        html+=`<p class="section-hint">Replicated inside every ${tiers[idx-1].label} folder.</p>`;
         html+=renderTagsHTML(tier.items,col,"removeItem",idx);
-        html+=`<div class="input-row"><input type="text" id="inp-${tier.id}" placeholder="Paste from spreadsheet or type names..." onkeydown="if(event.key==='Enter'){addItem(${idx});return;}"><button class="btn-add" onclick="addItem(${idx})">+ Add</button></div>`;
+        html+=`<div class="input-row"><input type="text" id="inp-${tier.id}" placeholder="Paste or type folders..." onkeydown="if(event.key==='Enter'){addItem(${idx});return;}"><button class="btn-add" onclick="addItem(${idx})">+ Add</button></div>`;
       } else {
-        html+=`<p class="section-hint">Unique subfolders per ${tiers[idx-1].label} name.</p>`;
         const parents=natSort(getUniqueParentNames(idx));
-        if(!parents.length){html+=`<div style="font-size:11px;color:#3f3f46;padding:6px 0">Add ${tiers[idx-1].label} folders first</div>`}
+        if(!parents.length){html+=`<div style="font-size:11px;color:#3f3f46;padding:6px 0">Add items above first</div>`}
         else{
           const parentCol=tierColor(idx-1);
           parents.forEach(pName=>{
@@ -477,20 +432,18 @@ function renderSidebar(){
               if(isEditing(idx,i,'perParentItem',pName)){return`<span class="tag" style="background:${col.tagBg};color:${col.text};border:1px solid ${col.tagBorder};padding:0"><input type="text" class="tag-edit" id="edit-tag" value="${s}" onkeydown="editKeyHandler(event)" onblur="commitEdit(this)" style="background:transparent;border:none;color:${col.text};font-size:11px;padding:3px 8px;width:${Math.max(40,s.length*7+16)}px;outline:none;font-family:inherit"></span>`}
               return`<span class="tag" style="background:${col.tagBg};color:${col.text};border:1px solid ${col.tagBorder}" ondblclick="startEditPerParentItem(${idx},'${e}',${i})">${s}<button class="tag-remove" onclick="removePerParentItem(${idx},'${e}',${i})">&times;</button></span>`;
             }).join("");
-            let parentNameHTML;
-            if(isEditing(idx,-1,'parentName',pName)){parentNameHTML=`<input type="text" id="edit-tag" value="${pName}" onkeydown="editKeyHandler(event)" onblur="commitEdit(this)" style="background:transparent;border:none;color:${parentCol.text};font-size:12px;font-weight:600;width:${Math.max(60,pName.length*8+16)}px;outline:none;font-family:inherit" onclick="event.stopPropagation()">`}
-            else{parentNameHTML=`<span class="group-name" style="color:${parentCol.text};cursor:text" ondblclick="event.stopPropagation();startEditParentName(${idx},'${e}')">${pName}</span>`}
-            html+=`<div class="group"><div class="group-header"><span class="group-dot" style="background:${parentCol.dot};cursor:pointer" onclick="togGroup('${esc(gKey)}')"></span>${parentNameHTML}<span class="group-count">${subs.length}</span><span class="group-chevron ${isExp?"open":""}" style="cursor:pointer" onclick="togGroup('${esc(gKey)}')">▶</span></div><div class="group-body ${isExp?"":"collapsed"}"><div class="tag-list">${tags}</div><div class="input-row"><input type="text" id="pp-${tier.id}-${cssId(pName)}" placeholder="Paste or type subfolders..." onkeydown="if(event.key==='Enter'){addPerParentItem(${idx},'${e}');return;}"><button class="btn-add" onclick="addPerParentItem(${idx},'${e}')">+ Add</button></div></div></div>`;
+            let pNameHTML=isEditing(idx,-1,'parentName',pName)?`<input type="text" id="edit-tag" value="${pName}" onkeydown="editKeyHandler(event)" onblur="commitEdit(this)" style="background:transparent;border:none;color:${parentCol.text};font-size:12px;font-weight:600;width:${Math.max(60,pName.length*8+16)}px;outline:none;font-family:inherit" onclick="event.stopPropagation()">`:`<span class="group-name" style="color:${parentCol.text};cursor:text" ondblclick="event.stopPropagation();startEditParentName(${idx},'${e}')">${pName}</span>`;
+            html+=`<div class="group"><div class="group-header"><span class="group-dot" style="background:${parentCol.dot};cursor:pointer" onclick="togGroup('${esc(gKey)}')"></span>${pNameHTML}<span class="group-count">${subs.length}</span><span class="group-chevron ${isExp?"open":""}" style="cursor:pointer" onclick="togGroup('${esc(gKey)}')">▶</span></div><div class="group-body ${isExp?"":"collapsed"}"><div class="tag-list">${tags}</div><div class="input-row"><input type="text" id="pp-${tier.id}-${cssId(pName)}" placeholder="Paste or type folders..." onkeydown="if(event.key==='Enter'){addPerParentItem(${idx},'${e}');return;}"><button class="btn-add" onclick="addPerParentItem(${idx},'${e}')">+ Add</button></div></div></div>`;
           });
         }
       }
     }
     html+=`</div>`;
     if(idx<tiers.length-1&&tiers.length<MAX_TIERS){
-      html+=`<div class="insert-tier-zone" onclick="insertTierAt(${idx+1})"><button class="insert-tier-btn">+ Insert Tier</button></div>`;
+      html+=`<div class="insert-tier-zone" onclick="insertTierAt(${idx+1})"><button class="insert-tier-btn">+ Insert Subfolder Level</button></div>`;
     }
   });
-  html+=`<div style="border-bottom:1px solid #27272a;padding:10px 20px"><button onclick="addTier()" ${tiers.length>=MAX_TIERS?"disabled":""} style="width:100%;padding:9px;border:1px dashed #3f3f46;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;background:transparent;color:#71717a;display:flex;align-items:center;justify-content:center;gap:6px">+ Add Tier${tiers.length>=MAX_TIERS?" (max "+MAX_TIERS+")":""}</button></div>`;
+  html+=`<div style="border-bottom:1px solid #27272a;padding:10px 20px"><button onclick="addTier()" ${tiers.length>=MAX_TIERS?"disabled":""} style="width:100%;padding:9px;border:1px dashed #3f3f46;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;background:transparent;color:#71717a;display:flex;align-items:center;justify-content:center;gap:6px">+ Add Subfolders${tiers.length>=MAX_TIERS?" (max "+MAX_TIERS+")":""}</button></div>`;
   sb.innerHTML=html;
 }
 
@@ -505,38 +458,26 @@ function renderTagsHTML(items,col,removeFn,tierIdx){
 }
 
 function fSVG(color){return`<svg class="fi" style="color:${color}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5z"/></svg>`}
-
 function toggleTreeNode(path){treeCollapsed[path]=!treeCollapsed[path];renderPreview()}
 
 function renderTreeView(){
   const box=document.getElementById("previewBody");
   const tree=buildDataTree();
-  let total=0,html="";
+  let html="";
   function renderNode(node,connectors,isLast,parentPath){
     if(node.tier<0){node.children.forEach((ch,i)=>renderNode(ch,[],i===node.children.length-1,""));return}
-    total++;
-    const col=tierColor(node.tier);
-    const path=parentPath?parentPath+"/"+node.name:node.name;
-    const hasChildren=node.children.length>0;
-    const isCollapsed=treeCollapsed[path]===true;
+    const col=tierColor(node.tier);const path=parentPath?parentPath+"/"+node.name:node.name;const isCollapsed=treeCollapsed[path]===true;
     let h='<div class="tree-row" onclick="toggleTreeNode(\''+esc(path)+'\')">';
     connectors.forEach(c=>{h+=`<span class="tc">${c}</span>`});
-    if(hasChildren){h+=`<span class="tree-toggle ${isCollapsed?"":"open"}">▶</span>`}
-    else{h+=`<span class="tree-toggle leaf"></span>`}
+    h+=node.children.length?`<span class="tree-toggle ${isCollapsed?"":"open"}">▶</span>`:`<span class="tree-toggle leaf"></span>`;
     h+=fSVG(col.previewIcon)+` <span style="color:${col.previewText};font-weight:${col.previewWeight}">${node.name}</span></div>`;
     html+=h;
-    if(hasChildren&&!isCollapsed){
-      node.children.forEach((ch,i)=>{
-        const childIsLast=i===node.children.length-1;
-        const newConn=[...connectors,childIsLast?"&nbsp;":"│"];
-        renderNode(ch,newConn,childIsLast,path);
-      });
+    if(node.children.length&&!isCollapsed){
+      node.children.forEach((ch,i)=>{const childIsLast=i===node.children.length-1;const newConn=[...connectors,childIsLast?"&nbsp;":"│"];renderNode(ch,newConn,childIsLast,path);});
     }
   }
   tree.children.forEach((ch,i)=>{renderNode(ch,[],i===tree.children.length-1,"");html+=`<div style="height:4px"></div>`;});
-  total=countNodes(tree);
   box.innerHTML=html||`<div class="preview-empty"><span>📂</span><p>Add folders to see your structure</p></div>`;
-  return total;
 }
 
 function renderColumnView(){
@@ -544,29 +485,22 @@ function renderColumnView(){
   const tree=buildDataTree();
   let html="";
   let currentChildren=tree.children;
-  let columns=[];
-  columns.push({items:currentChildren,tierIdx:currentChildren.length?currentChildren[0].tier:0,selectedName:columnSelection[0]||null});
+  let columns=[{items:currentChildren,tierIdx:currentChildren.length?currentChildren[0].tier:0,selectedName:columnSelection[0]||null}];
   for(let depth=0;depth<columnSelection.length;depth++){
-    const sel=columnSelection[depth];
-    const found=currentChildren.find(c=>c.name===sel);
-    if(found&&found.children.length){
-      currentChildren=found.children;
-      columns.push({items:currentChildren,tierIdx:currentChildren[0].tier,selectedName:columnSelection[depth+1]||null});
-    } else break;
+    const found=currentChildren.find(c=>c.name===columnSelection[depth]);
+    if(found&&found.children.length){currentChildren=found.children;columns.push({items:currentChildren,tierIdx:currentChildren[0].tier,selectedName:columnSelection[depth+1]||null});}
+    else break;
   }
   columns.forEach((col,colIdx)=>{
     const tierCol=tierColor(col.tierIdx);
     html+=`<div class="column"><div class="column-header" style="color:${tierCol.text}">${tiers[col.tierIdx]?tiers[col.tierIdx].label:"Tier "+(col.tierIdx+1)}</div><div class="column-body">`;
     natSort(col.items.map(c=>c.name)).forEach(name=>{
       const node=col.items.find(c=>c.name===name);
-      const isSel=col.selectedName===name;
-      const hasKids=node&&node.children.length>0;
-      html+=`<div class="column-item ${isSel?"selected":""}" onclick="selectColumn(${colIdx},'${esc(name)}')" style="color:${tierCol.previewText}">${fSVG(tierCol.previewIcon)} ${name}${hasKids?`<span class="column-item-arrow">▶</span>`:""}</div>`;
+      html+=`<div class="column-item ${col.selectedName===name?"selected":""}" onclick="selectColumn(${colIdx},'${esc(name)}')" style="color:${tierCol.previewText}">${fSVG(tierCol.previewIcon)} ${name}${node&&node.children.length?`<span class="column-item-arrow">▶</span>`:""}</div>`;
     });
     html+=`</div></div>`;
   });
   container.innerHTML=html;
-  return countNodes(tree);
 }
 
 function selectColumn(colIdx,name){columnSelection=columnSelection.slice(0,colIdx);columnSelection[colIdx]=name;renderPreview()}
@@ -574,63 +508,31 @@ function selectColumn(colIdx,name){columnSelection=columnSelection.slice(0,colId
 function renderHTreeView(){
   const container=document.getElementById("htreeWrap");
   const tree=buildDataTree();
-  if(!tree.children.length){container.innerHTML=`<div class="preview-empty"><span>📂</span><p>Add folders to see your structure</p></div>`;return countNodes(tree)}
+  if(!tree.children.length){container.innerHTML=`<div class="preview-empty"><span>📂</span><p>Add folders to see your structure</p></div>`;return}
   function assignPaths(node,pp){node._path=pp?pp+"/"+node.name:node.name;node.children.forEach(ch=>assignPaths(ch,node._path))}
   tree.children.forEach(ch=>assignPaths(ch,""));
   function renderNode(node){
-    const col=tierColor(node.tier);
-    const path=node._path;
-    const hasChildren=node.children.length>0;
-    const isCollapsed=treeCollapsed[path]===true;
-    let html=`<div class="htree-node">`;
-    html+=`<div class="htree-card" style="color:${col.previewText};border-color:${col.dot}40" onclick="toggleTreeNode('${esc(path)}')">${fSVG(col.previewIcon)} <span style="font-weight:${col.previewWeight}">${node.name}</span>`;
-    if(hasChildren){html+=`<span style="font-size:9px;color:#52525b;margin-left:2px">${isCollapsed?"▶":"▼"}</span>`}
-    html+=`</div>`;
-    if(hasChildren&&!isCollapsed){
-      html+=`<div class="htree-connector"><div class="htree-hline"></div><div class="htree-children">`;
-      node.children.forEach((ch,i)=>{html+=`<div class="htree-branch"><div class="htree-branch-line"></div>${renderNode(ch)}</div>`;});
-      html+=`</div></div>`;
-    }
-    html+=`</div>`;
-    return html;
+    const col=tierColor(node.tier);const path=node._path;const isCollapsed=treeCollapsed[path]===true;
+    let h=`<div class="htree-node"><div class="htree-card" style="color:${col.previewText};border-color:${col.dot}40" onclick="toggleTreeNode('${esc(path)}')">${fSVG(col.previewIcon)} <span style="font-weight:${col.previewWeight}">${node.name}</span>`;
+    if(node.children.length){h+=`<span style="font-size:9px;color:#52525b;margin-left:2px">${isCollapsed?"▶":"▼"}</span></div><div class="htree-connector"><div class="htree-hline"></div><div class="htree-children">`;node.children.forEach((ch)=>{if(!isCollapsed)h+=`<div class="htree-branch"><div class="htree-branch-line"></div>${renderNode(ch)}</div>`});h+=`</div></div>`}else{h+=`</div>`}
+    h+=`</div>`;return h;
   }
-  let html=`<div style="display:flex;flex-direction:column;gap:16px">`;
-  tree.children.forEach(ch=>{html+=renderNode(ch)});
-  html+=`</div>`;
-  container.innerHTML=html;
-  requestAnimationFrame(()=>{
-    document.querySelectorAll('.htree-children').forEach(el=>{
-      el.querySelectorAll(':scope > .htree-vline').forEach(l=>l.remove());
-      const branches=el.querySelectorAll(':scope > .htree-branch');
-      if(branches.length<2)return;
-      const first=branches[0];const last=branches[branches.length-1];
-      const parentRect=el.getBoundingClientRect();
-      const top=first.getBoundingClientRect().top+first.getBoundingClientRect().height/2-parentRect.top;
-      const bottom=last.getBoundingClientRect().top+last.getBoundingClientRect().height/2-parentRect.top;
-      const line=document.createElement('div');
-      line.className='htree-vline';line.style.top=top+'px';line.style.height=(bottom-top)+'px';
-      el.appendChild(line);
-    });
-  });
-  return countNodes(tree);
+  let html=`<div style="display:flex;flex-direction:column;gap:16px">`;tree.children.forEach(ch=>{html+=renderNode(ch)});html+=`</div>`;container.innerHTML=html;
+  requestAnimationFrame(()=>{document.querySelectorAll('.htree-children').forEach(el=>{el.querySelectorAll(':scope > .htree-vline').forEach(l=>l.remove());const branches=el.querySelectorAll(':scope > .htree-branch');if(branches.length<2)return;const first=branches[0],last=branches[branches.length-1],parentRect=el.getBoundingClientRect(),top=first.getBoundingClientRect().top+first.getBoundingClientRect().height/2-parentRect.top,bottom=last.getBoundingClientRect().top+last.getBoundingClientRect().height/2-parentRect.top,line=document.createElement('div');line.className='htree-vline';line.style.top=top+'px';line.style.height=(bottom-top)+'px';el.appendChild(line);});});
 }
 
 function renderPreview(){
-  let total=0;
-  if(currentView==="tree")total=renderTreeView();
-  else if(currentView==="columns")total=renderColumnView();
-  else if(currentView==="htree")total=renderHTreeView();
-  const tree=buildDataTree();total=countNodes(tree);
-  document.getElementById("folderBadge").textContent=total+" folder"+(total!==1?"s":"");
+  if(currentView==="tree")renderTreeView();
+  else if(currentView==="columns")renderColumnView();
+  else if(currentView==="htree")renderHTreeView();
+  const total=countNodes(buildDataTree());
+  document.getElementById("folderBadge").textContent=total+" folders";
   const has=tiers.some((_,i)=>tierHasContent(i));
-  document.getElementById("exportBtn").disabled=!has;
+  document.getElementById("directWriteBtn").disabled=!has;
 }
 
 function renderAll(){
-  const activeEl=document.activeElement;
-  const activeId=activeEl&&activeEl.tagName==="INPUT"?activeEl.id:null;
-  const activeVal=activeId?activeEl.value:"";
-  const activeSel=activeId?[activeEl.selectionStart,activeEl.selectionEnd]:null;
+  const activeEl=document.activeElement,activeId=activeEl&&activeEl.tagName==="INPUT"?activeEl.id:null,activeVal=activeId?activeEl.value:"",activeSel=activeId?[activeEl.selectionStart,activeEl.selectionEnd]:null;
   renderSidebar();renderPreview();
   if(activeId){const el=document.getElementById(activeId);if(el){el.value=activeVal;el.focus();if(activeSel)el.setSelectionRange(activeSel[0],activeSel[1])}}
   if(editingTag){const ed=document.getElementById("edit-tag");if(ed){ed.focus();ed.select()}}
@@ -642,24 +544,27 @@ function buildPaths(){
     if(tierIdx>=tiers.length){if(pathParts.length)paths.push(pathParts.join("/"));return}
     const items=natSort(getItemsForTier(tierIdx,parentName));
     if(!items.length){walk(tierIdx+1,parentName,pathParts);return}
-    items.forEach(item=>{
-      const np=[...pathParts,item];
-      if(tierIdx+1>=tiers.length)paths.push(np.join("/"));
-      else walk(tierIdx+1,item,np);
-    });
+    items.forEach(item=>{const np=[...pathParts,item];if(tierIdx+1>=tiers.length)paths.push(np.join("/"));else walk(tierIdx+1,item,np);});
   }
   if(tiers[0].items.length){natSort(tiers[0].items).forEach(item=>{if(tiers.length>1)walk(1,item,[item]);else paths.push(item)})}
   else if(tiers.length>1){walk(1,null,[])}
   return paths;
 }
 
-function exportZip(){
-  const paths=buildPaths();if(!paths.length)return;
-  const zip=new JSZip();
-  paths.forEach(p=>{zip.folder(p)});
-  zip.generateAsync({type:"blob"}).then(blob=>{
-    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="folder_structure.zip";a.click();URL.revokeObjectURL(a.href);
-  });
+async function writeToDisk() {
+  const paths = buildPaths(); if (!paths.length) return;
+  try {
+    const rootHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    for (const path of paths) {
+      const parts = path.split('/'); let currentHandle = rootHandle;
+      for (const part of parts) { currentHandle = await currentHandle.getDirectoryHandle(part, { create: true }); }
+    }
+    const total = countNodes(buildDataTree());
+    alert(`✅ Success!\n\n${total} folders created in:\n"${rootHandle.name}"\n\nYou can now open File Explorer to view them.`);
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    alert("Error writing to disk. This feature requires a secure connection (HTTPS) and a modern browser like Chrome or Edge.");
+  }
 }
 
 renderAll();
