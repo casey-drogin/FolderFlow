@@ -136,6 +136,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div class="sidebar-body" id="sidebarBody"></div>
   <div class="output-section">
+    <div id="aepTemplateSection" style="margin-bottom:10px;padding:10px;background:#111113;border:1px solid #27272a;border-radius:8px;display:none">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#a1a1aa;margin-bottom:6px;display:flex;align-items:center;gap:6px">🎬 AE Template</div>
+      <div style="font-size:11px;color:#71717a;margin-bottom:8px;line-height:1.4">Items ending in <code style="color:#a1a1aa">.aep</code> become files. Tokens: <code style="color:#a1a1aa">[tier1]</code>, <code style="color:#a1a1aa">[tier2]</code>, etc. expand to ancestor folder names.</div>
+      <input type="file" id="aepTemplateInput" accept=".aep" style="display:none" onchange="handleTemplatePick(this)">
+      <div class="input-row">
+        <input type="text" id="aepTemplateName" placeholder="No template selected" readonly style="cursor:default;color:#a1a1aa">
+        <button class="btn-add" onclick="document.getElementById('aepTemplateInput').click()">Browse…</button>
+      </div>
+    </div>
     <button id="directWriteBtn" style="width:100%;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;background:#2563eb;color:white;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;" onclick="writeToDisk()" disabled>📂 Download Folders</button>
   </div>
 </div>
@@ -178,7 +187,13 @@ let currentView="tree";
 let treeCollapsed={};
 let columnSelection=[];
 let justMovedTierId=null;
-let draggedTierIdx = null; 
+let draggedTierIdx = null;
+let aepTemplateFile = null;
+
+function isAepItem(name){return /\.aep$/i.test(name)}
+function hasAepItems(){return tiers.some(t=>t.items.some(isAepItem)||Object.values(t.perParent).some(arr=>arr.some(isAepItem)))}
+function handleTemplatePick(input){const f=input.files[0];if(!f)return;aepTemplateFile=f;document.getElementById('aepTemplateName').value=f.name;renderPreview()}
+function expandTokens(filename,pathParts){const ancestors=pathParts.slice(0,-1);let result=filename;ancestors.forEach((name,idx)=>{result=result.replace(new RegExp('\\[tier'+(idx+1)+'\\]','g'),name)});return result}
 
 function toggleHelp(e){e&&e.stopPropagation();const p=document.getElementById('helpPopup');p.style.display=p.style.display==='none'?'block':'none'}
 document.addEventListener('click',function(e){const p=document.getElementById('helpPopup');if(p&&p.style.display!=='none'&&!p.contains(e.target)&&e.target.id!=='helpBtn'){p.style.display='none'}});
@@ -342,7 +357,7 @@ function reorderTiers(fromIdx, toIdx){ const item = tiers.splice(fromIdx, 1)[0];
 
 function getItemsForTier(tierIdx,parentName){const t=tiers[tierIdx];if(tierIdx===0)return t.items;if(t.mode==="global")return t.items;return t.perParent[parentName]||[]}
 function getUniqueParentNames(tierIdx){if(tierIdx===0)return[];const names=new Set();collectAllNames(tierIdx-1,names);return[...names]}
-function collectAllNames(tierIdx,nameSet){const t=tiers[tierIdx];if(tierIdx===0){t.items.forEach(n=>nameSet.add(n));return}if(t.mode==="global"){t.items.forEach(n=>nameSet.add(n))}else{Object.values(t.perParent).forEach(arr=>arr.forEach(n=>nameSet.add(n)))}}
+function collectAllNames(tierIdx,nameSet){const t=tiers[tierIdx];if(tierIdx===0){t.items.forEach(n=>{if(!isAepItem(n))nameSet.add(n)});return}if(t.mode==="global"){t.items.forEach(n=>{if(!isAepItem(n))nameSet.add(n)})}else{Object.values(t.perParent).forEach(arr=>arr.forEach(n=>{if(!isAepItem(n))nameSet.add(n)}))}}
 function tierHasContent(tierIdx){const t=tiers[tierIdx];return t.items.length>0||Object.values(t.perParent).some(a=>a.length)}
 function tierItemCount(tierIdx){const t=tiers[tierIdx];if(t.mode==="global"||tierIdx===0)return t.items.length;return Object.values(t.perParent).reduce((s,a)=>s+a.length,0)}
 
@@ -357,30 +372,34 @@ function setView(v){
 }
 
 function buildDataTree(){
-  const root={name:"root",children:[],tier:-1};
-  function build(parentNode,tierIdx,parentName){
+  const root={name:"root",displayName:"root",children:[],tier:-1};
+  function build(parentNode,tierIdx,ancestors){
     if(tierIdx>=tiers.length)return;
-    const items=natSort(getItemsForTier(tierIdx,parentName));
-    if(!items.length){build(parentNode,tierIdx+1,parentName);return}
+    const items=natSort(getItemsForTier(tierIdx,ancestors[ancestors.length-1]));
+    if(!items.length){build(parentNode,tierIdx+1,ancestors);return}
     items.forEach(item=>{
-      const node={name:item,children:[],tier:tierIdx};
+      const displayName=isAepItem(item)?expandTokens(item,[...ancestors,item]):item;
+      const node={name:item,displayName,children:[],tier:tierIdx};
       parentNode.children.push(node);
-      build(node,tierIdx+1,item);
+      if(!isAepItem(item))build(node,tierIdx+1,[...ancestors,item]);
     });
   }
   if(tiers[0].items.length){
     natSort(tiers[0].items).forEach(item=>{
-      const node={name:item,children:[],tier:0};
+      const displayName=isAepItem(item)?expandTokens(item,[item]):item;
+      const node={name:item,displayName,children:[],tier:0};
       root.children.push(node);
-      if(tiers.length>1)build(node,1,item);
+      if(!isAepItem(item)&&tiers.length>1)build(node,1,[item]);
     });
   } else if(tiers.length>1){
-    build(root,1,null);
+    build(root,1,[]);
   }
   return root;
 }
 
 function countNodes(node){let c=0;if(node.tier>=0)c=1;node.children.forEach(ch=>{c+=countNodes(ch)});return c}
+function countFolders(node){let c=0;if(node.tier>=0&&!isAepItem(node.name))c=1;node.children.forEach(ch=>{c+=countFolders(ch)});return c}
+function countFiles(node){let c=0;if(node.tier>=0&&isAepItem(node.name))c=1;node.children.forEach(ch=>{c+=countFiles(ch)});return c}
 
 function insertTierAt(idx){
   if(tiers.length>=MAX_TIERS)return;
@@ -455,6 +474,8 @@ function renderTagsHTML(items,col,removeFn,tierIdx){
 }
 
 function fSVG(color){return`<svg class="fi" style="color:${color}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5z"/></svg>`}
+function fSVGFile(color){return`<svg class="fi" style="color:${color}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polygon points="10 11 10 17 15 14 10 11" fill="currentColor" stroke="none"/></svg>`}
+function iconForNode(name,color){return isAepItem(name)?fSVGFile(color):fSVG(color)}
 function toggleTreeNode(path){treeCollapsed[path]=!treeCollapsed[path];renderPreview()}
 
 function renderTreeView(){
@@ -467,7 +488,7 @@ function renderTreeView(){
     let h='<div class="tree-row" onclick="toggleTreeNode(\''+esc(path)+'\')">';
     connectors.forEach(c=>{h+=`<span class="tc">${c}</span>`});
     h+=node.children.length?`<span class="tree-toggle ${isCollapsed?"":"open"}">▶</span>`:`<span class="tree-toggle leaf"></span>`;
-    h+=fSVG(col.previewIcon)+` <span style="color:${col.previewText};font-weight:${col.previewWeight}">${node.name}</span></div>`;
+    h+=iconForNode(node.name,col.previewIcon)+` <span style="color:${col.previewText};font-weight:${col.previewWeight}">${node.displayName}</span></div>`;
     html+=h;
     if(node.children.length&&!isCollapsed){
       node.children.forEach((ch,i)=>{const childIsLast=i===node.children.length-1;const newConn=[...connectors,childIsLast?"&nbsp;":"│"];renderNode(ch,newConn,childIsLast,path);});
@@ -493,7 +514,7 @@ function renderColumnView(){
     html+=`<div class="column"><div class="column-header" style="color:${tierCol.text}">${tiers[col.tierIdx]?tiers[col.tierIdx].label:"Tier "+(col.tierIdx+1)}</div><div class="column-body">`;
     natSort(col.items.map(c=>c.name)).forEach(name=>{
       const node=col.items.find(c=>c.name===name);
-      html+=`<div class="column-item ${col.selectedName===name?"selected":""}" onclick="selectColumn(${colIdx},'${esc(name)}')" style="color:${tierCol.previewText}">${fSVG(tierCol.previewIcon)} ${name}${node&&node.children.length?`<span class="column-item-arrow">▶</span>`:""}</div>`;
+      html+=`<div class="column-item ${col.selectedName===name?"selected":""}" onclick="selectColumn(${colIdx},'${esc(name)}')" style="color:${tierCol.previewText}">${iconForNode(name,tierCol.previewIcon)} ${node?node.displayName:name}${node&&node.children.length?`<span class="column-item-arrow">▶</span>`:""}</div>`;
     });
     html+=`</div></div>`;
   });
@@ -516,7 +537,7 @@ function renderHTreeView(){
   function collectNodes(node){
     const el=document.createElement('div');
     el.style.cssText="display:inline-block;padding:6px 12px;border:1px solid;white-space:nowrap;";
-    el.innerHTML=`<span style="width:13px;display:inline-block"></span> ${node.name} <span style="font-size:9px">▶</span>`;
+    el.innerHTML=`<span style="width:13px;display:inline-block"></span> ${node.displayName} <span style="font-size:9px">▶</span>`;
     measureContainer.appendChild(el);
     node._measureEl=el;
     if(node.children) node.children.forEach(collectNodes);
@@ -540,7 +561,7 @@ function renderHTreeView(){
     const col=tierColor(node.tier);const path=node._path;const isCollapsed=treeCollapsed[path]===true;
     const w = tierWidths[node.tier] + 4; 
     
-    let h=`<div class="htree-node"><div class="htree-card" style="width:${w}px;color:${col.previewText};border-color:${col.dot}40;justify-content:flex-start" onclick="toggleTreeNode('${esc(path)}')">${fSVG(col.previewIcon)} <span style="font-weight:${col.previewWeight};margin-left:5px;flex:1;overflow:hidden;text-overflow:ellipsis">${node.name}</span>`;
+    let h=`<div class="htree-node"><div class="htree-card" style="width:${w}px;color:${col.previewText};border-color:${col.dot}40;justify-content:flex-start" onclick="toggleTreeNode('${esc(path)}')">${iconForNode(node.name,col.previewIcon)} <span style="font-weight:${col.previewWeight};margin-left:5px;flex:1;overflow:hidden;text-overflow:ellipsis">${node.displayName}</span>`;
     if(node.children.length){
         h+=`<span style="font-size:9px;color:#52525b;margin-left:4px">${isCollapsed?"▶":"▼"}</span></div><div class="htree-connector"><div class="htree-hline"></div><div class="htree-children">`;
         node.children.forEach((ch)=>{if(!isCollapsed)h+=`<div class="htree-branch"><div class="htree-branch-line"></div>${renderNode(ch)}</div>`});
@@ -559,10 +580,14 @@ function renderPreview(){
   if(currentView==="tree")renderTreeView();
   else if(currentView==="columns")renderColumnView();
   else if(currentView==="htree")renderHTreeView();
-  const total=countNodes(buildDataTree());
-  document.getElementById("folderBadge").textContent=total+" folders";
+  const tree=buildDataTree();
+  const folders=countFolders(tree);
+  const files=countFiles(tree);
+  document.getElementById("folderBadge").textContent=folders+" folder"+(folders===1?"":"s")+(files?" · "+files+" file"+(files===1?"":"s"):"");
   const has=tiers.some((_,i)=>tierHasContent(i));
-  document.getElementById("directWriteBtn").disabled=!has;
+  const needsTemplate=hasAepItems()&&!aepTemplateFile;
+  document.getElementById("directWriteBtn").disabled=!has||needsTemplate;
+  document.getElementById("aepTemplateSection").style.display=hasAepItems()?"block":"none";
 }
 
 function renderAll(){
@@ -578,25 +603,96 @@ function buildPaths(){
     if(tierIdx>=tiers.length){if(pathParts.length)paths.push(pathParts.join("/"));return}
     const items=natSort(getItemsForTier(tierIdx,parentName));
     if(!items.length){walk(tierIdx+1,parentName,pathParts);return}
-    items.forEach(item=>{const np=[...pathParts,item];if(tierIdx+1>=tiers.length)paths.push(np.join("/"));else walk(tierIdx+1,item,np);});
+    items.forEach(item=>{const np=[...pathParts,item];if(isAepItem(item)||tierIdx+1>=tiers.length)paths.push(np.join("/"));else walk(tierIdx+1,item,np);});
   }
-  if(tiers[0].items.length){natSort(tiers[0].items).forEach(item=>{if(tiers.length>1)walk(1,item,[item]);else paths.push(item)})}
+  if(tiers[0].items.length){natSort(tiers[0].items).forEach(item=>{if(isAepItem(item)||tiers.length===1)paths.push(item);else walk(1,item,[item])})}
   else if(tiers.length>1){walk(1,null,[])}
   return paths;
 }
 
 async function writeToDisk() {
   const paths = buildPaths(); if (!paths.length) return;
+
+  const filePaths = paths.filter(p => isAepItem(p.split('/').pop()));
+  const folderPaths = paths.filter(p => !isAepItem(p.split('/').pop()));
+
+  let templateBuffer = null;
+  if (filePaths.length) {
+    if (!aepTemplateFile) { alert("Select an .aep template file first."); return; }
+    try { templateBuffer = await aepTemplateFile.arrayBuffer(); }
+    catch (e) { alert("Couldn't read the template file. It may have been moved — reselect it."); return; }
+  }
+
   try {
     const rootHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-    for (const path of paths) {
-      const parts = path.split('/'); let currentHandle = rootHandle;
-      for (const part of parts) { currentHandle = await currentHandle.getDirectoryHandle(part, { create: true }); }
+
+    // Cache of directory handle *promises* keyed by path string.
+    // Storing promises (not resolved handles) makes concurrent getDir() calls
+    // for the same path share a single underlying getDirectoryHandle call.
+    const dirCache = new Map();
+    dirCache.set('', Promise.resolve(rootHandle));
+
+    function getDir(pathStr) {
+      if (dirCache.has(pathStr)) return dirCache.get(pathStr);
+      const idx = pathStr.lastIndexOf('/');
+      const parentPath = idx < 0 ? '' : pathStr.substring(0, idx);
+      const name = idx < 0 ? pathStr : pathStr.substring(idx + 1);
+      const p = getDir(parentPath).then(parent =>
+        parent.getDirectoryHandle(name, { create: true })
+      );
+      dirCache.set(pathStr, p);
+      return p;
     }
-    const total = countNodes(buildDataTree());
-    alert(`✅ ${total} folders created successfully!`);
+
+    // Phase 1: create all folders (fast; dedup'd via cache).
+    for (const fp of folderPaths) { await getDir(fp); }
+
+    // Phase 2: write files in parallel batches.
+    // createWritable() carries fixed overhead per call (~50-100ms in Chrome
+    // due to its swap-file mechanism), so serial writes bottleneck badly.
+    // Parallelism masks that overhead.
+    let filesWritten = 0, filesSkipped = 0;
+
+    async function writeOne(p) {
+      const parts = p.split('/');
+      const rawName = parts[parts.length - 1];
+      const expandedName = expandTokens(rawName, parts);
+      const dirPath = parts.slice(0, -1).join('/');
+      const dir = await getDir(dirPath);
+      // No overwrite: probe for existing file, skip if present.
+      let exists = false;
+      try { await dir.getFileHandle(expandedName); exists = true; } catch (e) {}
+      if (exists) { filesSkipped++; return; }
+      const fh = await dir.getFileHandle(expandedName, { create: true });
+      const w = await fh.createWritable();
+      await w.write(templateBuffer);
+      await w.close();
+      filesWritten++;
+    }
+
+    const CONCURRENCY = 12;
+    let cursor = 0;
+    async function worker() {
+      while (cursor < filePaths.length) {
+        const my = cursor++;
+        try { await writeOne(filePaths[my]); }
+        catch (e) { console.error('Failed to write', filePaths[my], e); }
+      }
+    }
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, filePaths.length) }, worker)
+    );
+
+    const tree = buildDataTree();
+    const folderCount = countFolders(tree);
+    let msg = `✅ ${folderCount} folder${folderCount !== 1 ? 's' : ''}`;
+    if (filesWritten) msg += ` + ${filesWritten} file${filesWritten !== 1 ? 's' : ''}`;
+    msg += ' created!';
+    if (filesSkipped) msg += `\n(${filesSkipped} file${filesSkipped !== 1 ? 's' : ''} skipped — already existed)`;
+    alert(msg);
   } catch (err) {
     if (err.name === 'AbortError') return;
+    console.error(err);
     alert("Error writing to disk. This feature requires a secure connection (HTTPS) and a modern browser like Chrome or Edge.");
   }
 }
