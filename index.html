@@ -146,6 +146,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
     <button id="directWriteBtn" style="width:100%;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;background:#2563eb;color:white;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;" onclick="writeToDisk()" disabled>📂 Download Folders</button>
+    <button id="saveTemplateBtn" style="width:100%;padding:8px;border:1px solid #3f3f46;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;background:transparent;color:#a1a1aa;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s" onmouseover="this.style.borderColor='#71717a';this.style.color='#e4e4e7'" onmouseout="this.style.borderColor='#3f3f46';this.style.color='#a1a1aa'" onclick="saveTemplate()">💾 Save Template</button>
   </div>
 </div>
 <div class="main">
@@ -180,15 +181,16 @@ const COLORS=[
 ];
 const MAX_TIERS=6;
 
-let tiers=[{id:"tier0",label:"Root Directory",items:[],mode:"global",perParent:{},open:true}];
+let tiers=[{id:"tier0",label:"Root Directory",items:[],mode:"global",perParent:{},open:true}];/* @@BAKED_TIERS@@ */
 let expanded={};
-let tierIdCounter=2;
+let tierIdCounter=2;/* @@BAKED_COUNTER@@ */
 let currentView="tree";
 let treeCollapsed={};
 let columnSelection=[];
 let justMovedTierId=null;
 let draggedTierIdx = null;
 let aepTemplateFile = null;
+let savedTemplateFileName = null;/* @@BAKED_FILENAME@@ */
 
 function isAepItem(name){return /\.aep$/i.test(name)}
 function hasAepItems(){return tiers.some(t=>t.items.some(isAepItem)||Object.values(t.perParent).some(arr=>arr.some(isAepItem)))}
@@ -697,7 +699,90 @@ async function writeToDisk() {
   }
 }
 
+async function saveTemplate() {
+  try {
+    // These containers get filled by renderAll() at runtime. We empty them
+    // for the capture (so the saved file doesn't carry stale rendered HTML)
+    // and restore them afterward. Note: sunburstView deliberately NOT in
+    // this list — it wraps htreeWrap as a structural child, and clearing
+    // the parent would destroy that child (breaking the flowchart view
+    // in loaded templates). htreeWrap itself is a leaf we can safely clear.
+    const dynamicIds = ['sidebarBody', 'previewBody', 'columnView', 'htreeWrap'];
+    const helpPopup = document.getElementById('helpPopup');
+    const templateName = document.getElementById('aepTemplateName');
+    const templateSection = document.getElementById('aepTemplateSection');
+    const dlBtn = document.getElementById('directWriteBtn');
+    const badge = document.getElementById('folderBadge');
+
+    // Snapshot everything we're about to mutate
+    const savedInner = {};
+    dynamicIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) savedInner[id] = el.innerHTML;
+    });
+    const prev = {
+      helpDisplay: helpPopup ? helpPopup.style.display : '',
+      tmplValue: templateName ? templateName.value : '',
+      tmplPlaceholder: templateName ? templateName.placeholder : '',
+      sectionDisplay: templateSection ? templateSection.style.display : '',
+      dlDisabled: dlBtn ? dlBtn.disabled : false,
+      badgeText: badge ? badge.textContent : ''
+    };
+
+    // Reset to clean initial-load state for the capture
+    dynamicIds.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
+    if (helpPopup) helpPopup.style.display = 'none';
+    if (templateName) { templateName.value = ''; templateName.placeholder = 'No template selected'; }
+    if (templateSection) templateSection.style.display = 'none';
+    if (dlBtn) dlBtn.disabled = true;
+    if (badge) badge.textContent = '0 folders';
+
+    // Capture the raw HTML source from the DOM
+    let src = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+
+    // Restore live DOM
+    dynamicIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && savedInner[id] !== undefined) el.innerHTML = savedInner[id];
+    });
+    if (helpPopup) helpPopup.style.display = prev.helpDisplay;
+    if (templateName) { templateName.value = prev.tmplValue; templateName.placeholder = prev.tmplPlaceholder; }
+    if (templateSection) templateSection.style.display = prev.sectionDisplay;
+    if (dlBtn) dlBtn.disabled = prev.dlDisabled;
+    if (badge) badge.textContent = prev.badgeText;
+
+    // Bake tier state into the captured HTML
+    const tiersJson = JSON.stringify(tiers);
+    const filename = aepTemplateFile ? aepTemplateFile.name : savedTemplateFileName;
+    const filenameLiteral = filename ? JSON.stringify(filename) : 'null';
+
+    src = src.replace(/^let tiers=.*\/\* @@BAKED_TIERS@@ \*\/.*$/m,
+      () => `let tiers=${tiersJson};/* @@BAKED_TIERS@@ */`);
+    src = src.replace(/^let tierIdCounter=.*\/\* @@BAKED_COUNTER@@ \*\/.*$/m,
+      () => `let tierIdCounter=${tierIdCounter};/* @@BAKED_COUNTER@@ */`);
+    src = src.replace(/^let savedTemplateFileName=.*\/\* @@BAKED_FILENAME@@ \*\/.*$/m,
+      () => `let savedTemplateFileName=${filenameLiteral};/* @@BAKED_FILENAME@@ */`);
+
+    const blob = new Blob([src], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'FolderFlow_Template.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error(err);
+    alert("Couldn't save template: " + (err && err.message ? err.message : err));
+  }
+}
+
 renderAll();
+if (savedTemplateFileName) {
+  const inp = document.getElementById('aepTemplateName');
+  if (inp) inp.placeholder = 'Last used: ' + savedTemplateFileName;
+}
 </script>
 </body>
 </html>
